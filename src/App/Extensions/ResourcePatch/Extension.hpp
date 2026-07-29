@@ -53,6 +53,7 @@ private:
         int32_t order{0};
 
         Red::SharedPtr<Red::ResourceToken<>> token;
+        mutable Red::SharedSpinLock tokenLock;
         Core::Map<Red::CName, Red::Handle<Red::AppearanceDefinition>> appearances;
         Red::SharedSpinLock appearanceLock;
     };

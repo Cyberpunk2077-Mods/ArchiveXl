@@ -1364,12 +1364,19 @@ App::ResourcePatchExtension::PatchInstance::PatchInstance(Red::ResourcePath aSou
 
 void App::ResourcePatchExtension::PatchInstance::LoadResource()
 {
-    token = Red::ResourceLoader::Get()->LoadAsync(path);
+    std::unique_lock _(tokenLock);
+
+    if (!token)
+    {
+        token = Red::ResourceLoader::Get()->LoadAsync(path);
+    }
 }
 
 template<typename T>
 Red::ResourceTokenPtr<T> App::ResourcePatchExtension::PatchInstance::GetToken() const
 {
+    std::shared_lock _(tokenLock);
+
     if (!token)
         return {};
 
