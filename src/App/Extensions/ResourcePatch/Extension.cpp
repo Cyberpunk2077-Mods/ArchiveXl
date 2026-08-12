@@ -236,6 +236,14 @@ void App::ResourcePatchExtension::OnResourceReady(Red::ResourceSerializerContext
                 }
                 break;
             }
+            case Red::GetTypeName<Red::inkanimAnimationLibraryResource>():
+            {
+                if (const auto& resource = Red::Cast<Red::inkanimAnimationLibraryResource>(serializable))
+                {
+                    OnInkAnimResourceLoad(resource);
+                }
+                break;
+            }
             }
         }
     }
@@ -954,7 +962,6 @@ void App::ResourcePatchExtension::OnDeviceResourceLoad(Red::gameDeviceResource* 
             continue;
 
         auto patchMap = std::bit_cast<Red::HashMap<uint64_t, Red::gameCookedDeviceData>*>(&patchResource->data->unk30);
-
         patchMap->ForEach([&deviceMap](const uint64_t& aKey, const Red::gameCookedDeviceData& aData)
                           {
                               deviceMap->InsertOrAssign(aKey, aData);
@@ -981,6 +988,42 @@ void App::ResourcePatchExtension::OnSetPersistentStateData(uint64_t a1, Red::Dat
             continue;
 
         Raw::PersistencySystem::SetPersistentStateData(a1, patchResource->buffer, a3, a4);
+    }
+}
+
+void App::ResourcePatchExtension::OnInkAnimResourceLoad(Red::inkanimAnimationLibraryResource* aResource)
+{
+    const auto& patchList = GetPatchList(aResource->path);
+
+    if (patchList.empty())
+        return;
+
+    for (const auto& patchInstance : patchList)
+    {
+        auto patchResource = patchInstance->GetResource<Red::inkanimAnimationLibraryResource>();
+
+        if (!patchResource)
+            continue;
+
+        for (const auto& patchEntry : patchResource->sequences)
+        {
+            auto isNewEntry = true;
+
+            for (auto& existingEntry : aResource->sequences)
+            {
+                if (existingEntry->name == patchEntry->name)
+                {
+                    isNewEntry = false;
+                    existingEntry = patchEntry;
+                    break;
+                }
+            }
+
+            if (isNewEntry)
+            {
+                aResource->sequences.PushBack(patchEntry);
+            }
+        }
     }
 }
 
