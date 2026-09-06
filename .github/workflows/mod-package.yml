@@ -44,10 +44,14 @@ jobs:
             Remove-Item -LiteralPath bundle/packed/archive/pc/mod -Recurse -Force
           }
           New-Item -ItemType Directory -Force -Path bundle/source/archive | Out-Null
-          cp77tools import -p bundle/source/raw -o bundle/source/archive
+          $jsonInputs = @(Get-ChildItem bundle/source/raw -Recurse -Filter *.json -File)
+          if ($jsonInputs.Count -eq 0) { throw "No CR2W JSON inputs found" }
+          cp77tools convert deserialize bundle/source/raw -o bundle/source/archive
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $resources = @(Get-ChildItem bundle/source/archive -Recurse -File)
-          if ($resources.Count -eq 0) { throw "WolvenKit did not import any REDengine resources" }
+          if ($resources.Count -lt $jsonInputs.Count) {
+            throw "WolvenKit deserialized only $($resources.Count) of $($jsonInputs.Count) REDengine resources"
+          }
           $output = 'bundle/packed/archive/pc/mod'
           New-Item -ItemType Directory -Force -Path $output | Out-Null
           cp77tools pack -p bundle/source/archive -o $output
