@@ -33,17 +33,28 @@ jobs:
           $version = $env:GITHUB_REF_NAME.TrimStart('v')
           (Get-Content xmake.lua -Raw) -replace 'set_version\("[^"]+"', "set_version(`"$version`"" | Set-Content xmake.lua
       - name: Install WolvenKit CLI
-        run: dotnet tool install --global wolvenkit.cli
+        run: dotnet tool install --global wolvenkit.cli --version 8.20.0
       - name: Build bundled archive from source
         shell: pwsh
         run: |
+          if (Test-Path -LiteralPath bundle/source/archive) {
+            Remove-Item -LiteralPath bundle/source/archive -Recurse -Force
+          }
+          if (Test-Path -LiteralPath bundle/packed/archive/pc/mod) {
+            Remove-Item -LiteralPath bundle/packed/archive/pc/mod -Recurse -Force
+          }
           New-Item -ItemType Directory -Force -Path bundle/source/archive | Out-Null
-          cp77tools import -p bundle/source/raw -o bundle/source/archive --keep
+          cp77tools import -p bundle/source/raw -o bundle/source/archive
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $resources = @(Get-ChildItem bundle/source/archive -Recurse -File)
+          if ($resources.Count -eq 0) { throw "WolvenKit did not import any REDengine resources" }
           $output = 'bundle/packed/archive/pc/mod'
           New-Item -ItemType Directory -Force -Path $output | Out-Null
           cp77tools pack -p bundle/source/archive -o $output
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $archive = Get-ChildItem $output -Filter *.archive | Select-Object -First 1
           if (-not $archive) { throw "WolvenKit did not produce an archive" }
+          if ($archive.Length -le 8192) { throw "WolvenKit produced an empty archive: $($archive.Length) bytes" }
           Move-Item -LiteralPath $archive.FullName -Destination "$output/ArchiveXL.archive" -Force
       - name: Build windows_x64
         run: |
